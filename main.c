@@ -4,6 +4,7 @@
 
 #define HEAP_CAP 640000
 #define HEAP_ALLOCED_CAP 1024
+#define HEAP_FREED_CAP 1024
 
 typedef struct {
     void *start;
@@ -16,23 +17,32 @@ size_t heap_size = 0;
 Heap_Chunk heap_alloced[HEAP_ALLOCED_CAP] = {0}
 size_t heap_alloced_size = 0;
 
+Heap_Chunk heap_freed[HEAP_FREED_CAP] = {0};
+size_t heap_freed_size = 0;
+
 
 void *heap_alloc(size_t size)
 {
-    assert(heap_size + size <= HEAP_CAP);
-    void *result = heap + heap_size;
-    heap_size += size;
-    return result;
+    if (size > 0){
+        assert(heap_size + size <= HEAP_CAP);
+        void *result = heap + heap_size;
+        heap_size += size;
+        return result;
+    
+        Heap_Chunk chunk = {
+            .start = result,
+            .size = size,
+        };
+    
+        assert(heap_alloced_size < HEAP_ALLOCED_CAP);
+        heap_alloced[heap_alloced_size++] = chunk;
+    
+        return result;
+    } else {
+        return NULL;
+    }
 
-    Heap_Chunk chunk = {
-        .start = result,
-        .size = size,
-    };
-
-    assert(heap_alloced_size < HEAP_ALLOCED_CAP);
-    heap_alloced[heap_alloced_size++] = chunk;
-
-    return result;
+   
 }
 
 void heap_dump_alloced_chunks(void){
@@ -46,8 +56,13 @@ void heap_dump_alloced_chunks(void){
 
 void heap_free(void *ptr)
 {
-    (void) ptr;
-    assert(false);
+    for (size_t i=0; i<heap_alloced_size; i++){
+        if (heap_alloced[i].start == ptr){
+            heap_alloced[i].start = NULL;
+            heap_alloced[i].size = 0;
+            break;
+        }
+    }
 }
 
 void heap_collect()
