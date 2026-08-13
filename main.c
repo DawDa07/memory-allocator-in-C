@@ -26,9 +26,22 @@ void chunk_list_dump(const Chunk_List *list){
     }
 }
 
+int chunk_start_compar(const Chunk *a, const Chunk *b){
+    return a.start - b.start;
+}
+
 int chunk_list_find(const Chunk_List *list, void *ptr){
-    assert(false);
-    return -1;
+    Chunk key = {.start = ptr};
+
+    void *result = bsearch(&key, list->chunks, 
+                list->count, sizeof(list->chunks[0]), 
+                chunk_start_compar);
+    if (result != 0){
+        assert(list->chunks <= result);
+        return (result - list->chunks) / sizeof(list->chunks[0]);
+    } else {
+        return -1;
+    }
 }
 
 void chunk_list_insert(Chunk_List *list, void *start, size_t size)
