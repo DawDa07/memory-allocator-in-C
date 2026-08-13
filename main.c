@@ -17,35 +17,6 @@ typedef struct {
     Chunk chunks[CHUNK_LIST_CAP];
 } Chunk_List;
 
-void chunk_list_dump(const Chunk_List *list){
-    printf("Chunks (%zu):\n", list->size);
-    for (size_t i = 0; i < list->size; i++){
-        printf("start: %p, size: %zu\n", 
-            list->chunks[i].start, 
-            list->chunks[i].size);
-    }
-}
-
-int chunk_start_compar(const void *a, const void *b){
-    const Chunk *a_chunk = a;
-    const Chunk *b_chunk = b;
-    return a_chunk->start - b_chunk->start;
-}
-
-int chunk_list_find(const Chunk_List *list, void *ptr){
-    Chunk key = {.start = ptr};
-
-    Chunk *result = bsearch(&key, list->chunks, 
-                list->count, sizeof(list->chunks[0]), 
-                chunk_start_compar);
-    if (result != 0){
-        assert(list->chunks <= result);
-        return (result - list->chunks) / sizeof(list->chunks[0]);
-    } else {
-        return -1;
-    }
-}
-
 void chunk_list_insert(Chunk_List *list, void *start, size_t size)
 {
     assert(list->count < CHUNK_LIST_CAP);
@@ -59,6 +30,44 @@ void chunk_list_insert(Chunk_List *list, void *start, size_t size)
     }
 
     list->count++;
+}
+
+void chunk_list_merge(Chunk_List *dst, const Chunk_List *src){
+    dst->count = 0;
+    for (size_t i = 0; i < src->count; i++){
+        const Chunk chunk = src->chunks[i];
+
+        if (dst->count > 0){
+            Chunk *top_chunk = &dst->chunks[dst->count-1];
+
+            if (top_chunk->start + top_chunk->size == chunk.start){
+                top_chunk->size += chunk.size;
+            }else{
+                chunk_list_insert(tmp, chunk.start, chunk.size);
+            }
+        }else{
+            chunk_list_insert(tmp, chunk.start, chunk.size);
+        }
+
+}
+
+void chunk_list_dump(const Chunk_List *list){
+    printf("Chunks (%zu):\n", list->size);
+    for (size_t i = 0; i < list->size; i++){
+        printf("start: %p, size: %zu\n", 
+            list->chunks[i].start, 
+            list->chunks[i].size);
+    }
+}
+
+
+int chunk_list_find(const Chunk_List *list, void *ptr){
+    for (size_t i = 0; i < list->count; i++){
+        if (list->chunks[i].start == ptr){
+            return (int) i;
+        }
+    }
+    return -1;
 }
 
 void chunk_list_remove(Chunk_List *list, size_t index){
@@ -81,10 +90,14 @@ Chunk_List freed_chunks = {
     },
 };
 
+Chunk_List tmp_chunks = {0};
 
 void *heap_alloc(size_t size)
 {
     if (size > 0){
+        chunk_list_merge(&tmp_chunks, &freed_chunks);
+        freed_chunks = tmp_chunks;
+
         for (size_t i = 0; i < freed_chunks.count; i++){
             const Chunk chunk = freed_chunks.chunks[i];
             if (chunk.size >= size){
