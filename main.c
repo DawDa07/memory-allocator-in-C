@@ -1,4 +1,4 @@
-//54:30
+//14320
 
 #include <stdio.h>
 #include <assert.h>
@@ -72,25 +72,37 @@ void chunk_list_remove(Chunk_List *list, size_t index){
 
 
 char heap[HEAP_CAP] = {0};
-size_t heap_size = 0;
 
 Chunk_List alloced_chunks = {0};
-Chunk_List freed_chunks = {0};
+Chunk_List freed_chunks = {
+    .count = 1,
+    .chunks = {
+        [0] = {.start = heap, .size = sizeof(heap)},
+    },
+};
 
 
 void *heap_alloc(size_t size)
 {
     if (size > 0){
-        assert(heap_size + size <= HEAP_CAP);
-        void *ptr = heap + heap_size;
-        heap_size += size;
-
-        chunk_list_insert(&alloced_chunks, ptr, size);  
-        return ptr;  
-    } else {
-        return NULL;
+        for (size_t i = 0; i < freed_chunks.count; i++){
+            const Chunk chunk = freed_chunks.chunks[i];
+            if (chunk.size >= size){
+                chunk_list_remove(&freed_chunks, i);
+    
+                const size_t tail_size = chunk.size - size;
+                chunk_list_insert(&alloced_chunks, chunk.start, size);
+    
+                if (tail_size > 0){
+                    chunk_list_insert(&freed_chunks, chunk.start + size, tail_size);
+                }
+    
+                return chunk.start;
+            }
+        }
     }
 
+    return NULL;
    
 }
 
