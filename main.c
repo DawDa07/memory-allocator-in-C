@@ -8,7 +8,7 @@
 #define CHUNK_LIST_CAP 1024
 
 typedef struct {
-    void *start;
+    char *start;
     size_t size;
 } Chunk;
 
@@ -26,14 +26,16 @@ void chunk_list_dump(const Chunk_List *list){
     }
 }
 
-int chunk_start_compar(const Chunk *a, const Chunk *b){
-    return a.start - b.start;
+int chunk_start_compar(const void *a, const void *b){
+    const Chunk *a_chunk = a;
+    const Chunk *b_chunk = b;
+    return a_chunk->start - b_chunk->start;
 }
 
 int chunk_list_find(const Chunk_List *list, void *ptr){
     Chunk key = {.start = ptr};
 
-    void *result = bsearch(&key, list->chunks, 
+    Chunk *result = bsearch(&key, list->chunks, 
                 list->count, sizeof(list->chunks[0]), 
                 chunk_start_compar);
     if (result != 0){
@@ -60,7 +62,12 @@ void chunk_list_insert(Chunk_List *list, void *start, size_t size)
 }
 
 void chunk_list_remove(Chunk_List *list, size_t index){
-    assert(false);
+    assert(idnex < list->count);
+    for (size_t i = index; i < list->count - 1; i++){
+        list->chunks[i] = list->chunks[i+1];
+    }
+    list->count -= 1;
+
 }
 
 
@@ -89,12 +96,15 @@ void *heap_alloc(size_t size)
 
 void heap_free(void *ptr)
 {
-    const int index = chunk_list_find(&alloced_chunks, ptr);
-    assert(index >= 0);
-    chunk_list_insert(&freed_chunks, 
-        (void *)      alloced_chunks.chunks[index].start, 
-                      alloced_chunks.chunks[index].size);
-    chunk_list_remove(&alloced_chunks, (size_t) index);
+    if (ptr){
+        const int index = chunk_list_find(&alloced_chunks, ptr);
+        assert(index >= 0);
+        chunk_list_insert(&freed_chunks, 
+                          alloced_chunks.chunks[index].start, 
+                          alloced_chunks.chunks[index].size);
+        chunk_list_remove(&alloced_chunks, (size_t) index);
+    }
+    
 }
 
 void heap_collect()
