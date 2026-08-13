@@ -5,8 +5,7 @@
 #include <stdbool.h>
 
 #define HEAP_CAP 640000
-#define HEAP_ALLOCED_CAP 1024
-#define HEAP_FREED_CAP 1024
+#define CHUNK_LIST_CAP 1024
 
 typedef struct {
     void *start;
@@ -14,8 +13,8 @@ typedef struct {
 } Chunk;
 
 typedef struct {
-    size_
-    Heap_Chunk chunks[HEAP_ALLOCED_CAP];
+    size_t count;
+    Chunk chunks[CHUNK_LIST_CAP];
 } Chunk_List;
 
 void chunk_list_dump(const Chunk_List *list){
@@ -32,8 +31,19 @@ int chunk_list_find(const Chunk_List *list, void *ptr){
     return -1;
 }
 
-void chunk_list_insert(Chunk_List *list, void *ptr, size_t size){
-    assert(false);
+void chunk_list_insert(Chunk_List *list, void *start, size_t size)
+{
+    assert(list->count < CHUNK_LIST_CAP);
+    list->chunks[list->count].start = start;
+    list->chunks[list->count].size = size;
+    
+    for (size_t i = list->count; i > 0 && list->chunks[i-1].start > start; i--){
+        const Chunk t = list->chunks[i];
+        list->chunks[i] = list->chunks[i-1];
+        list->chunks[i-1] = t;
+    }
+    
+    list->count++;
 }
 
 void chunk_list_remove(Chunk_List *list, size_t index){
