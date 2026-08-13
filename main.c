@@ -42,7 +42,7 @@ void chunk_list_insert(Chunk_List *list, void *start, size_t size)
         list->chunks[i] = list->chunks[i-1];
         list->chunks[i-1] = t;
     }
-    
+
     list->count++;
 }
 
@@ -76,7 +76,12 @@ void *heap_alloc(size_t size)
 
 void heap_free(void *ptr)
 {
-    assert(false);
+    const int index = chunk_list_find(&alloced_chunks, ptr);
+    assert(index >= 0);
+    chunk_list_insert(&freed_chunks, 
+        (void *)      alloced_chunks.chunks[index].start, 
+                      alloced_chunks.chunks[index].size);
+    chunk_list_remove(&alloced_chunks, (size_t) index);
 }
 
 void heap_collect()
