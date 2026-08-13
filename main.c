@@ -1,3 +1,5 @@
+//54:30
+
 #include <stdio.h>
 #include <assert.h>
 #include <stdbool.h>
@@ -9,35 +11,52 @@
 typedef struct {
     void *start;
     size_t size;
-} Heap_Chunk;
+} Chunk;
+
+typedef struct {
+    size_
+    Heap_Chunk chunks[HEAP_ALLOCED_CAP];
+} Chunk_List;
+
+void chunk_list_dump(const Chunk_List *list){
+    printf("Chunks (%zu):\n", list->size);
+    for (size_t i = 0; i < list->size; i++){
+        printf("start: %p, size: %zu\n", 
+            list->chunks[i].start, 
+            list->chunks[i].size);
+    }
+}
+
+int chunk_list_find(const Chunk_List *list, void *ptr){
+    assert(false);
+    return -1;
+}
+
+void chunk_list_insert(Chunk_List *list, void *ptr, size_t size){
+    assert(false);
+}
+
+void chunk_list_remove(Chunk_List *list, size_t index){
+    assert(false);
+}
+
 
 char heap[HEAP_CAP] = {0};
 size_t heap_size = 0;
 
-Heap_Chunk heap_alloced[HEAP_ALLOCED_CAP] = {0}
-size_t heap_alloced_size = 0;
-
-Heap_Chunk heap_freed[HEAP_FREED_CAP] = {0};
-size_t heap_freed_size = 0;
+Chunk_List alloced_chunks = {0};
+Chunk_List freed_chunks = {0};
 
 
 void *heap_alloc(size_t size)
 {
     if (size > 0){
         assert(heap_size + size <= HEAP_CAP);
-        void *result = heap + heap_size;
+        void *ptr = heap + heap_size;
         heap_size += size;
-        return result;
-    
-        Heap_Chunk chunk = {
-            .start = result,
-            .size = size,
-        };
-    
-        assert(heap_alloced_size < HEAP_ALLOCED_CAP);
-        heap_alloced[heap_alloced_size++] = chunk;
-    
-        return result;
+
+        chunk_list_insert(&alloced_chunks, ptr, size);  
+        return ptr;  
     } else {
         return NULL;
     }
@@ -45,24 +64,9 @@ void *heap_alloc(size_t size)
    
 }
 
-void heap_dump_alloced_chunks(void){
-    printf("Alloced chunks (%zu):\n", heap_alloced_size);
-    for (size_t i = 0; i < heap_alloced_size; i++){
-        printf("start: %p, size: %zu\n", 
-            heap_alloced[i].start, 
-            heap_alloced[i].size);
-    }
-}
-
 void heap_free(void *ptr)
 {
-    for (size_t i=0; i<heap_alloced_size; i++){
-        if (heap_alloced[i].start == ptr){
-            heap_alloced[i].start = NULL;
-            heap_alloced[i].size = 0;
-            break;
-        }
-    }
+    assert(false);
 }
 
 void heap_collect()
