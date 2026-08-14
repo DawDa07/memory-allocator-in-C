@@ -7,7 +7,25 @@
 
 static void *gc_stack_base = NULL;
 
-char heap[HEAP_CAP] = {0};
+alignas(HEAP_ALIGN) char heap[HEAP_CAP] = {0};
+
+static size_t align_up_size(size_t size)
+{
+    if (size == 0) {
+        return 0;
+    }
+    const size_t mask = HEAP_ALIGN - 1;
+    if (size > SIZE_MAX - mask) {
+        return 0;
+    }
+    return (size + mask) & ~mask;
+}
+
+static void coalesce_freed(void)
+{
+    chunk_list_merge(&tmp_chunks, &freed_chunks);
+    freed_chunks = tmp_chunks;
+}
 
 Chunk_List alloced_chunks = {0};
 Chunk_List freed_chunks = {
@@ -85,20 +103,20 @@ void chunk_list_remove(Chunk_List *list, size_t index)
 
 void *heap_alloc(size_t size)
 {
-    if (size > 0) {
-        chunk_list_merge(&tmp_chunks, &freed_chunks);
-        freed_chunks = tmp_chunks;
+    const size_t need = align_up_size(size);
+    if (need > 0) {
+        coalesce_freed();
 
         for (size_t i = 0; i < freed_chunks.count; i++) {
             const Chunk chunk = freed_chunks.chunks[i];
-            if (chunk.size >= size) {
+            if (chunk.size >= need) {
                 chunk_list_remove(&freed_chunks, i);
 
-                const size_t tail_size = chunk.size - size;
-                chunk_list_insert(&alloced_chunks, chunk.start, size);
+                const size_t tail_size = chunk.size - need;
+                chunk_list_insert(&alloced_chunks, chunk.start, need);
 
                 if (tail_size > 0) {
-                    chunk_list_insert(&freed_chunks, chunk.start + size, tail_size);
+                    chunk_list_insert(&freed_chunks, chunk.start + need, tail_size);
                 }
 
                 return chunk.start;
@@ -107,6 +125,59 @@ void *heap_alloc(size_t size)
     }
 
     return NULL;
+}
+
+void *heap_realloc(void *ptr, size_t size)
+{
+    if (ptr == NULL) {
+        return heap_alloc(size);
+    }
+    if (size == 0) {
+        heap_free(ptr);
+        return NULL;
+    }
+
+    const size_t need = align_up_size(size);
+    if (need == 0) {
+        return NULL;
+    }
+
+    const int index = chunk_list_find(&alloced_chunks, ptr);
+    assert(index >= 0);
+    const Chunk chunk = alloced_chunks.chunks[index];
+
+    if (need == chunk.size) {
+        return ptr;
+    }
+
+    coalesce_freed();
+
+    if (need < chunk.size) {
+        const size_t tail = chunk.size - need;
+        alloced_chunks.chunks[index].size = need;
+        chunk_list_insert(&freed_chunks, chunk.start + need, tail);
+        return ptr;
+    }
+
+    const size_t extra = need - chunk.size;
+    const int free_i = chunk_list_find(&freed_chunks, chunk.start + chunk.size);
+    if (free_i >= 0 && freed_chunks.chunks[free_i].size >= extra) {
+        const size_t leftover = freed_chunks.chunks[free_i].size - extra;
+        chunk_list_remove(&freed_chunks, (size_t) free_i);
+        alloced_chunks.chunks[index].size = need;
+        if (leftover > 0) {
+            chunk_list_insert(&freed_chunks, chunk.start + need, leftover);
+        }
+        return ptr;
+    }
+
+    void *fresh = heap_alloc(size);
+    if (fresh == NULL) {
+        return NULL;
+    }
+    memcpy(fresh, ptr, chunk.size);
+    heap_free(ptr);
+    return fresh;
 }
 
 void heap_free(void *ptr)
@@ -235,4 +306,34 @@ void heap_reset(void)
     freed_chunks.count = 1;
     freed_chunks.chunks[0].start = heap;
     freed_chunks.chunks[0].size = sizeof(heap);
+}
+
+Heap_Stats heap_stats(void)
+{
+    Heap_Stats stats = {0};
+    stats.alloced_count = alloced_chunks.count;
+    stats.freed_count = freed_chunks.count;
+
+    for (size_t i = 0; i < alloced_chunks.count; i++) {
+        stats.alloced_bytes += alloced_chunks.chunks[i].size;
+    }
+    for (size_t i = 0; i < freed_chunks.count; i++) {
+        size_t size = freed_chunks.chunks[i].size;
+        stats.freed_bytes += size;
+        if (size > stats.largest_free) {
+            stats.largest_free = size;
+        }
+    }
+
+    return stats;
+}
+
+void heap_stats_print(const Heap_Stats *stats)
+{
+    printf("heap: alloced %zu bytes in %zu chunks, free %zu bytes in %zu chunks, largest free %zu\n",
+           stats->alloced_bytes,
+           stats->alloced_count,
+           stats->freed_bytes,
+           stats->freed_count,
+           stats->largest_free);
 }
