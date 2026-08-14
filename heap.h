@@ -27,6 +27,8 @@ void chunk_list_dump(const Chunk_List *list);
 int chunk_list_find(const Chunk_List *list, void *ptr);
 void chunk_list_remove(Chunk_List *list, size_t index);
 
+/* Call from main with the current frame so heap_collect can scan stack roots. */
+void heap_init(void *stack_base);
 void *heap_alloc(size_t size);
 void heap_free(void *ptr);
 void heap_collect(void);

@@ -12,6 +12,7 @@ test: test.c heap.c heap.h
 	./test_heap
 
 coverage: test.c heap.c heap.h
+	rm -f *.gcda *.gcno *.gcov
 	$(CC) $(CFLAGS) --coverage -o test_heap test.c heap.c
 	./test_heap
 	gcov -b test_heap-heap.gcno
