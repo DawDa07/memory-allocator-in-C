@@ -1,7 +1,11 @@
 #include <stdio.h>
 #include <assert.h>
+#include <stdint.h>
+#include <string.h>
 
 #include "heap.h"
+
+static void *gc_stack_base = NULL;
 
 char heap[HEAP_CAP] = {0};
 
@@ -117,13 +121,115 @@ void heap_free(void *ptr)
     }
 }
 
+void heap_init(void *stack_base)
+{
+    gc_stack_base = stack_base;
+}
+
+static int chunk_list_find_containing(const Chunk_List *list, void *ptr)
+{
+    char *p = ptr;
+    size_t lo = 0;
+    size_t hi = list->count;
+
+    while (lo < hi) {
+        size_t mid = lo + (hi - lo) / 2;
+        char *start = list->chunks[mid].start;
+        char *end = start + list->chunks[mid].size;
+        if (p < start) {
+            hi = mid;
+        } else if (p >= end) {
+            lo = mid + 1;
+        } else {
+            return (int) mid;
+        }
+    }
+
+    return -1;
+}
+
+static void chunk_list_append(Chunk_List *list, void *start, size_t size)
+{
+    assert(list->count < CHUNK_LIST_CAP);
+    list->chunks[list->count].start = start;
+    list->chunks[list->count].size = size;
+    list->count++;
+}
+
+static uintptr_t *align_word_up(void *p)
+{
+    uintptr_t x = (uintptr_t) p;
+    x = (x + sizeof(uintptr_t) - 1) & ~(sizeof(uintptr_t) - 1);
+    return (uintptr_t *) x;
+}
+
+static uintptr_t *align_word_down(void *p)
+{
+    uintptr_t x = (uintptr_t) p;
+    x &= ~(sizeof(uintptr_t) - 1);
+    return (uintptr_t *) x;
+}
+
+static void mark_region(Chunk_List *marked, void *from, void *to)
+{
+    char *start = from;
+    char *end = to;
+    if (start > end) {
+        char *t = start;
+        start = end;
+        end = t;
+    }
+
+    uintptr_t heap_begin = (uintptr_t) heap;
+    uintptr_t heap_end = heap_begin + HEAP_CAP;
+
+    for (uintptr_t *p = align_word_up(start); p < align_word_down(end); p++) {
+        uintptr_t value = *p;
+        if (value < heap_begin || value >= heap_end) {
+            continue;
+        }
+
+        int index = chunk_list_find_containing(&alloced_chunks, (void *) value);
+        if (index < 0) {
+            continue;
+        }
+
+        Chunk chunk = alloced_chunks.chunks[index];
+        if (chunk_list_find(marked, chunk.start) < 0) {
+            chunk_list_append(marked, chunk.start, chunk.size);
+        }
+    }
+}
+
 void heap_collect(void)
 {
-    /* Mark-and-sweep is not implemented yet. */
+    Chunk_List marked = {0};
+    uintptr_t stack_end;
+
+    if (gc_stack_base != NULL) {
+        mark_region(&marked, gc_stack_base, &stack_end);
+    }
+
+    for (size_t i = 0; i < marked.count; i++) {
+        Chunk chunk = marked.chunks[i];
+        mark_region(&marked, chunk.start, chunk.start + chunk.size);
+    }
+
+    size_t i = 0;
+    while (i < alloced_chunks.count) {
+        Chunk chunk = alloced_chunks.chunks[i];
+        if (chunk_list_find(&marked, chunk.start) < 0) {
+            chunk_list_insert(&freed_chunks, chunk.start, chunk.size);
+            chunk_list_remove(&alloced_chunks, i);
+        } else {
+            i++;
+        }
+    }
 }
 
 void heap_reset(void)
 {
+    memset(heap, 0, sizeof(heap));
     alloced_chunks.count = 0;
     tmp_chunks.count = 0;
     freed_chunks.count = 1;
