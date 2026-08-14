@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stddef.h>
 #include <string.h>
 
 #include "heap.h"
@@ -173,15 +174,84 @@ static void test_heap_first_fit_skips_small_hole(void)
     heap_free(c);
 }
 
+static void wipe_stack(void)
+{
+    volatile unsigned char buf[65536];
+    for (size_t i = 0; i < sizeof(buf); i++) {
+        buf[i] = 0;
+    }
+}
+
+static void alloc_garbage(void)
+{
+    (void) heap_alloc(64);
+}
+
+static void collect_clean(void)
+{
+    wipe_stack();
+    heap_collect();
+}
+
 static void test_heap_collect(void)
 {
+    volatile unsigned char frame_wipe[4096];
+    memset((void *) frame_wipe, 0, sizeof(frame_wipe));
+    heap_init(NULL);
+    heap_reset();
+    (void) heap_alloc(16);
+    heap_collect();
+    EXPECT(alloced_chunks.count == 0);
+
+    heap_init(__builtin_frame_address(0));
     heap_reset();
     heap_collect();
     EXPECT(alloced_chunks.count == 0);
+
+    {
+        void *volatile live = heap_alloc(32);
+        char *volatile dangling = heap + 4096;
+        alloc_garbage();
+        collect_clean();
+        EXPECT(alloced_chunks.count == 1);
+        EXPECT(chunk_list_find(&alloced_chunks, (void *) live) == 0);
+        EXPECT(dangling == heap + 4096);
+        heap_free((void *) live);
+    }
+
+    heap_reset();
+    {
+        void **volatile root = heap_alloc(sizeof(void *));
+        void *child = heap_alloc(24);
+        *root = child;
+        child = NULL;
+        collect_clean();
+        EXPECT(alloced_chunks.count == 2);
+        EXPECT(chunk_list_find(&alloced_chunks, (void *) root) >= 0);
+        EXPECT(chunk_list_find(&alloced_chunks, *root) >= 0);
+        heap_free(*root);
+        heap_free((void *) root);
+    }
+
+    heap_reset();
+    {
+        char *p = heap_alloc(64);
+        char *volatile mid = p + 16;
+        p = NULL;
+        collect_clean();
+        EXPECT(alloced_chunks.count == 1);
+        EXPECT(alloced_chunks.chunks[0].start <= (char *) mid);
+        EXPECT((char *) mid < alloced_chunks.chunks[0].start + (ptrdiff_t) alloced_chunks.chunks[0].size);
+        heap_free(alloced_chunks.chunks[0].start);
+    }
+
+    (void) frame_wipe[0];
 }
 
 int main(void)
 {
+    heap_init(__builtin_frame_address(0));
+
     test_chunk_list_insert_sorted();
     test_chunk_list_find();
     test_chunk_list_remove();
