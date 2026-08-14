@@ -1,3 +1,7 @@
 heap
+test_heap
 *.dSYM/
 *.o
+*.gcda
+*.gcno
+*.gcov
