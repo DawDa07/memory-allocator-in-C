@@ -44,7 +44,3 @@ next alloc coalesces if A/C are also freed, or first-fits the hole
 - GC is conservative: leftover stack words can keep objects alive; objects are never moved
 - Not a replacement for libc `malloc`
 - Call `heap_init(__builtin_frame_address(0))` from `main` before `heap_collect`
-
-## Resume bullet
-
-Custom first-fit memory allocator in C with coalescing, 16-byte alignment, realloc, and a conservative mark-and-sweep GC; tested, with a heap-allocated linked-list demo.
