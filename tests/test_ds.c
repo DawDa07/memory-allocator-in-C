@@ -81,26 +81,86 @@ static void test_list_ops(void)
     List list;
     list_init(&list);
 
+    EXPECT(list_is_empty(&list));
     EXPECT(list_pop_front(&list, NULL) == 0);
+    EXPECT(list_peek_front(&list, NULL) == 0);
+
     EXPECT(list_push_front(&list, 3) == 1);
     EXPECT(list_push_front(&list, 2) == 1);
     EXPECT(list_push_front(&list, 1) == 1);
     EXPECT(list_len(&list) == 3);
     EXPECT(list.head->value == 1);
+    EXPECT(list.tail->value == 3);
+    EXPECT(list_contains(&list, 2) == 1);
+    EXPECT(list_contains(&list, 99) == 0);
     EXPECT(list_find(&list, 2) != NULL);
     EXPECT(list_find(&list, 99) == NULL);
 
-    EXPECT(list_remove(&list, 2) == 1);
-    EXPECT(list_len(&list) == 2);
-    EXPECT(list_find(&list, 2) == NULL);
-    EXPECT(list_remove(&list, 2) == 0);
-
     int out = 0;
+    EXPECT(list_peek_front(&list, &out) == 1 && out == 1);
+    EXPECT(list_peek_back(&list, &out) == 1 && out == 3);
+    EXPECT(list_get(&list, 1, &out) == 1 && out == 2);
+    EXPECT(list_set(&list, 1, 20) == 1);
+    EXPECT(list_get(&list, 1, &out) == 1 && out == 20);
+
+    EXPECT(list_remove(&list, 20) == 1);
+    EXPECT(list_len(&list) == 2);
+    EXPECT(list_find(&list, 20) == NULL);
+    EXPECT(list_remove(&list, 20) == 0);
+    EXPECT(list.head->value == 1);
+    EXPECT(list.tail->value == 3);
+
     EXPECT(list_pop_front(&list, &out) == 1 && out == 1);
     EXPECT(list_pop_front(&list, &out) == 1 && out == 3);
     EXPECT(list_len(&list) == 0);
+    EXPECT(list.head == NULL && list.tail == NULL);
 
     list_free(&list);
+}
+
+static void test_list_push_back_insert_reverse(void)
+{
+    heap_reset();
+    List list;
+    list_init(&list);
+
+    EXPECT(list_push_back(&list, 1) == 1);
+    EXPECT(list_push_back(&list, 2) == 1);
+    EXPECT(list_push_back(&list, 4) == 1);
+    EXPECT(list_insert_at(&list, 2, 3) == 1); /* 1,2,3,4 */
+    EXPECT(list_insert_at(&list, 0, 0) == 1); /* 0,1,2,3,4 */
+    EXPECT(list_insert_at(&list, 5, 5) == 1); /* 0..5 */
+    EXPECT(list_len(&list) == 6);
+    EXPECT(list.head->value == 0);
+    EXPECT(list.tail->value == 5);
+
+    int out = 0;
+    for (int i = 0; i < 6; i++) {
+        EXPECT(list_get(&list, (size_t)i, &out) == 1 && out == i);
+    }
+
+    EXPECT(list_remove_at(&list, 0, &out) == 1 && out == 0);
+    EXPECT(list_remove_at(&list, 4, &out) == 1 && out == 5); /* was last */
+    EXPECT(list_remove_at(&list, 1, &out) == 1 && out == 2); /* 1,3,4 */
+    EXPECT(list_len(&list) == 3);
+    EXPECT(list.head->value == 1);
+    EXPECT(list.tail->value == 4);
+
+    list_reverse(&list); /* 4,3,1 */
+    EXPECT(list.head->value == 4);
+    EXPECT(list.tail->value == 1);
+    EXPECT(list_get(&list, 1, &out) == 1 && out == 3);
+
+    list_reverse(&list); /* 1,3,4 */
+    EXPECT(list.head->value == 1);
+    EXPECT(list.tail->value == 4);
+
+    list_free(&list);
+    EXPECT(list_is_empty(&list));
+    {
+        Heap_Stats st = heap_stats();
+        EXPECT(st.alloced_count == 0);
+    }
 }
 
 static void test_hashmap_ops(void)
@@ -176,6 +236,7 @@ int main(void)
     test_vec_grow_and_pop();
     test_vec_oom();
     test_list_ops();
+    test_list_push_back_insert_reverse();
     test_hashmap_ops();
     test_chunk_pressure_list_vs_vec();
 

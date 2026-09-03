@@ -16,7 +16,7 @@ build/     compiled binaries
 
 ```bash
 make          # linked-list + GC demo → build/heap
-make demos    # list GC demo + vector demo
+make demos    # list GC, vector, and list demos
 make test     # allocator unit tests
 make test_ds  # vector / list / hashmap tests
 make stress   # deterministic alloc/free fragmentation run
@@ -148,7 +148,7 @@ Thin containers that allocate only through `heap_alloc` / `heap_free` / `heap_re
 | Module | Role |
 |--------|------|
 | `ds/vec` | Growable `int` array (doubling via `realloc`) |
-| `ds/list` | Singly linked list of `int` nodes |
+| `ds/list` | Singly linked list of `int` (head + tail; push/pop, index ops, reverse) |
 | `ds/hashmap` | Open-addressing `int → int` map (one slot table) |
 
 Normal use calls `vec_free` / `list_free` / `hashmap_free`. The list GC demo is the exception: it drops reachability and relies on `heap_collect`. Prefer contiguous structures (vector, hashmap table) when you care about the 1024-chunk cap — many tiny list nodes consume one chunk each.

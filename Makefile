@@ -16,7 +16,10 @@ $(BUILD)/heap: demos/list_gc.c $(HEAP_SRC) src/heap.h ds/list.c ds/list.h | $(BU
 $(BUILD)/vec_demo: demos/vec_demo.c $(HEAP_SRC) src/heap.h ds/vec.c ds/vec.h | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ demos/vec_demo.c ds/vec.c $(HEAP_SRC)
 
-demos: $(BUILD)/heap $(BUILD)/vec_demo
+$(BUILD)/list_demo: demos/list_demo.c $(HEAP_SRC) src/heap.h ds/list.c ds/list.h | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ demos/list_demo.c ds/list.c $(HEAP_SRC)
+
+demos: $(BUILD)/heap $(BUILD)/vec_demo $(BUILD)/list_demo
 
 test: $(BUILD)/test_heap
 	./$(BUILD)/test_heap

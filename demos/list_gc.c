@@ -57,6 +57,7 @@ int main(void)
     }
     if (cut != NULL) {
         cut->next = NULL;
+        list.tail = cut;
     }
     list.len = 5;
 
