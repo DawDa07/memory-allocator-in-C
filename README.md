@@ -5,8 +5,10 @@ A first-fit heap over a fixed 640KB arena, with coalescing, 16-byte aligned allo
 ## Build
 
 ```bash
-make          # linked-list + GC demo
-make test     # unit tests
+make          # linked-list + GC demo (uses ds/list)
+make demos    # list GC demo + vector demo
+make test     # allocator unit tests
+make test_ds  # vector / list / hashmap tests
 make stress   # deterministic alloc/free fragmentation run
 make coverage # gcov line coverage of heap.c
 ```
@@ -125,7 +127,21 @@ It is **conservative**: it does not know types. If a leftover integer on the sta
 
 ## Demo
 
-`make` builds a list of nodes 1..20 on this heap, then cuts the chain after 5 and runs the GC. You should see 20 allocated chunks before collect and 5 after, plus `heap_stats` (bytes in use, free-list holes, largest free chunk).
+`make` builds a list of nodes 1..20 on this heap (via `ds/list`), then cuts the chain after 5 and runs the GC. You should see 20 allocated chunks before collect and 5 after, plus `heap_stats` (bytes in use, free-list holes, largest free chunk).
+
+`make demos` also builds `vec_demo`, which grows one contiguous buffer with `heap_realloc` so 20 ints use a single allocated chunk.
+
+## Data structures (`ds/`)
+
+Thin containers that allocate only through `heap_alloc` / `heap_free` / `heap_realloc`:
+
+| Module | Role |
+|--------|------|
+| `ds/vec` | Growable `int` array (doubling via `realloc`) |
+| `ds/list` | Singly linked list of `int` nodes |
+| `ds/hashmap` | Open-addressing `int → int` map (one slot table) |
+
+Normal use calls `vec_free` / `list_free` / `hashmap_free`. The list GC demo is the exception: it drops reachability and relies on `heap_collect`. Prefer contiguous structures (vector, hashmap table) when you care about the 1024-chunk cap — many tiny list nodes consume one chunk each.
 
 ## Limits
 

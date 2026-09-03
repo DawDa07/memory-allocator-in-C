@@ -1,5 +1,7 @@
 heap
+vec_demo
 test_heap
+test_ds
 heap_stress
 *.dSYM/
 *.o
