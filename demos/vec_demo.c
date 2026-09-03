@@ -1,7 +1,7 @@
 #include <stdio.h>
 
-#include "../heap.h"
-#include "../ds/vec.h"
+#include "heap.h"
+#include "vec.h"
 
 int main(void)
 {

@@ -2,9 +2,9 @@
 #include <string.h>
 
 #include "heap.h"
-#include "ds/vec.h"
-#include "ds/list.h"
-#include "ds/hashmap.h"
+#include "vec.h"
+#include "list.h"
+#include "hashmap.h"
 
 static int tests_run;
 static int tests_failed;

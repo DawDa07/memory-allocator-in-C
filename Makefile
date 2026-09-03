@@ -1,36 +1,46 @@
-CFLAGS=-Wall -Wextra -std=c11 -pedantic -ggdb
+CFLAGS=-Wall -Wextra -std=c11 -pedantic -ggdb -Isrc -Ids
+HEAP_SRC=src/heap.c
 DS_SRCS=ds/vec.c ds/list.c ds/hashmap.c
-HEAP_SRC=heap.c
+BUILD=build
 
 .PHONY: all test test_ds demos stress coverage clean
 
-all: heap
+all: $(BUILD)/heap
 
-heap: demos/list_gc.c $(HEAP_SRC) heap.h ds/list.c ds/list.h
-	$(CC) $(CFLAGS) -o heap demos/list_gc.c ds/list.c $(HEAP_SRC)
+$(BUILD):
+	mkdir -p $(BUILD)
 
-demos: heap vec_demo
+$(BUILD)/heap: demos/list_gc.c $(HEAP_SRC) src/heap.h ds/list.c ds/list.h | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ demos/list_gc.c ds/list.c $(HEAP_SRC)
 
-vec_demo: demos/vec_demo.c $(HEAP_SRC) heap.h ds/vec.c ds/vec.h
-	$(CC) $(CFLAGS) -o vec_demo demos/vec_demo.c ds/vec.c $(HEAP_SRC)
+$(BUILD)/vec_demo: demos/vec_demo.c $(HEAP_SRC) src/heap.h ds/vec.c ds/vec.h | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ demos/vec_demo.c ds/vec.c $(HEAP_SRC)
 
-test: test_heap.c $(HEAP_SRC) heap.h
-	$(CC) $(CFLAGS) -o test_heap test_heap.c $(HEAP_SRC)
-	./test_heap
+demos: $(BUILD)/heap $(BUILD)/vec_demo
 
-test_ds: test_ds.c $(HEAP_SRC) heap.h $(DS_SRCS) ds/vec.h ds/list.h ds/hashmap.h
-	$(CC) $(CFLAGS) -o test_ds test_ds.c $(DS_SRCS) $(HEAP_SRC)
-	./test_ds
+test: $(BUILD)/test_heap
+	./$(BUILD)/test_heap
 
-stress: stress.c $(HEAP_SRC) heap.h
-	$(CC) $(CFLAGS) -o heap_stress stress.c $(HEAP_SRC)
-	./heap_stress
+$(BUILD)/test_heap: tests/test_heap.c $(HEAP_SRC) src/heap.h | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ tests/test_heap.c $(HEAP_SRC)
 
-coverage: test_heap.c $(HEAP_SRC) heap.h
-	rm -f *.gcda *.gcno *.gcov
-	$(CC) $(CFLAGS) --coverage -o test_heap test_heap.c $(HEAP_SRC)
-	./test_heap
-	gcov -b test_heap-heap.gcno
+test_ds: $(BUILD)/test_ds
+	./$(BUILD)/test_ds
+
+$(BUILD)/test_ds: tests/test_ds.c $(HEAP_SRC) src/heap.h $(DS_SRCS) ds/vec.h ds/list.h ds/hashmap.h | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ tests/test_ds.c $(DS_SRCS) $(HEAP_SRC)
+
+stress: $(BUILD)/heap_stress
+	./$(BUILD)/heap_stress
+
+$(BUILD)/heap_stress: tests/stress.c $(HEAP_SRC) src/heap.h | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ tests/stress.c $(HEAP_SRC)
+
+coverage: tests/test_heap.c $(HEAP_SRC) src/heap.h | $(BUILD)
+	rm -f $(BUILD)/*.gcda $(BUILD)/*.gcno *.gcov
+	$(CC) $(CFLAGS) --coverage -o $(BUILD)/test_heap tests/test_heap.c $(HEAP_SRC)
+	./$(BUILD)/test_heap
+	gcov -b -o $(BUILD) $(HEAP_SRC)
 
 clean:
-	rm -f heap vec_demo test_heap test_ds heap_stress *.o *.gcda *.gcno *.gcov
+	rm -rf $(BUILD) *.gcov *.dSYM

@@ -1,6 +1,6 @@
 #include "list.h"
 
-#include "../heap.h"
+#include "heap.h"
 
 void list_init(List *list)
 {

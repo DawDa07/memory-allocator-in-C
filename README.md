@@ -2,10 +2,20 @@
 
 A first-fit heap over a fixed 640KB arena, with coalescing, 16-byte aligned allocations, `realloc`, and a conservative mark-and-sweep garbage collector.
 
+## Layout
+
+```
+src/       allocator (heap.c / heap.h)
+ds/        containers on top of the heap
+demos/     list GC + vector demos
+tests/     allocator, ds, and stress tests
+build/     compiled binaries
+```
+
 ## Build
 
 ```bash
-make          # linked-list + GC demo (uses ds/list)
+make          # linked-list + GC demo → build/heap
 make demos    # list GC demo + vector demo
 make test     # allocator unit tests
 make test_ds  # vector / list / hashmap tests

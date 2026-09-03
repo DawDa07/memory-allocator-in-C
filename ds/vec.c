@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "../heap.h"
+#include "heap.h"
 
 enum { VEC_INITIAL_CAP = 8 };
 

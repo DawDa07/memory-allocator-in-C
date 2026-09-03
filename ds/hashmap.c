@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "../heap.h"
+#include "heap.h"
 
 enum {
     HASHMAP_INITIAL_CAP = 16,

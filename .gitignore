@@ -1,8 +1,4 @@
-heap
-vec_demo
-test_heap
-test_ds
-heap_stress
+build/
 *.dSYM/
 *.o
 *.gcda

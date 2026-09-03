@@ -1,7 +1,7 @@
 #include <stdio.h>
 
-#include "../heap.h"
-#include "../ds/list.h"
+#include "heap.h"
+#include "list.h"
 
 static void wipe_stack(void)
 {
